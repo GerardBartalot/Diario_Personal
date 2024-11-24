@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diario Personal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex justify-center items-center">
+
+  <div class="bg-white shadow-xl rounded-lg border border-gray-300 w-4/5 max-w-5xl">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white py-4 rounded-t-lg">
+      <h1 class="text-center text-2xl font-bold">Mi Diario Personal</h1>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex flex-col p-6">
+      <!-- Botones de exportar/importar -->
+      <div class="flex justify-between mb-4">
+        <button id="exportButton" class="bg-green-600 text-white py-2 px-4 rounded">Exportar Entradas</button>
+        <button id="importButton" class="bg-yellow-600 text-white py-2 px-4 rounded">Importar Entradas</button>
+      </div>
+
+      <div class="flex flex-1">
+        <!-- Sidebar -->
+        <aside class="w-1/4 bg-gray-200 p-4 border-r rounded-bl-lg">
+          <h2 class="text-lg font-semibold mb-4">Entradas Guardadas</h2>
+          <ul id="entriesList" class="space-y-2">
+            <!-- Las entradas aparecerán aquí -->
+          </ul>
+        </aside>
+
+        <!-- Formulario Principal -->
+        <section class="flex-1 p-6">
+          <div id="placeholder" class="text-center text-gray-500 italic">
+            <p>No hay entradas escritas. Empieza a escribir tu primera entrada.</p>
+          </div>
+
+          <div id="entryForm" class="hidden">
+            <input type="text" id="entryTitle" placeholder="Título" class="w-full p-2 mb-4 border rounded" />
+            <textarea id="entryContent" placeholder="Escribe tu entrada aquí..." class="w-full p-2 mb-4 border rounded h-40"></textarea>
+            <button id="saveButton" class="bg-blue-600 text-white py-2 px-4 rounded">Guardar Entrada</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-2 rounded-b-lg">
+      <p>Aplicación de Diario Personal - Hecha con ❤️</p>
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const entriesList = document.getElementById("entriesList");
+      const entryForm = document.getElementById("entryForm");
+      const placeholder = document.getElementById("placeholder");
+      const entryTitle = document.getElementById("entryTitle");
+      const entryContent = document.getElementById("entryContent");
+      const saveButton = document.getElementById("saveButton");
+      const exportButton = document.getElementById("exportButton");
+      const importButton = document.getElementById("importButton");
+
+      // Cargar entradas desde LocalStorage
+      const loadEntries = () => {
+        const entries = JSON.parse(localStorage.getItem("entries")) || [];
+        entriesList.innerHTML = "";
+        if (entries.length === 0) {
+          placeholder.classList.remove("hidden");
+        } else {
+          placeholder.classList.add("hidden");
+          entries.forEach((entry, index) => {
+            const li = document.createElement("li");
+            li.className = "flex justify-between items-center p-2 bg-white shadow rounded";
+            li.innerHTML = `
+              <span>${entry.date} - <strong>${entry.title}</strong></span>
+              <button data-index="${index}" class="deleteEntry bg-red-500 text-white px-2 py-1 rounded">Eliminar</button>
+            `;
+            entriesList.appendChild(li);
+          });
+        }
+      };
+
+      // Guardar nueva entrada
+      saveButton.addEventListener("click", () => {
+        const title = entryTitle.value.trim();
+        const content = entryContent.value.trim();
+        if (!title || !content) {
+          alert("Por favor, completa todos los campos.");
+          return;
+        }
+        const entries = JSON.parse(localStorage.getItem("entries")) || [];
+        const newEntry = {
+          title,
+          content,
+          date: new Date().toLocaleDateString(),
+        };
+        entries.push(newEntry);
+        localStorage.setItem("entries", JSON.stringify(entries));
+        entryTitle.value = "";
+        entryContent.value = "";
+        loadEntries();
+      });
+
+      // Eliminar entrada
+      entriesList.addEventListener("click", (e) => {
+        if (e.target.classList.contains("deleteEntry")) {
+          const index = e.target.dataset.index;
+          const entries = JSON.parse(localStorage.getItem("entries")) || [];
+          entries.splice(index, 1);
+          localStorage.setItem("entries", JSON.stringify(entries));
+          loadEntries();
+        }
+      });
+
+      // Exportar entradas a archivo JSON
+      exportButton.addEventListener("click", () => {
+        const entries = JSON.parse(localStorage.getItem("entries")) || [];
+        const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "diario_entradas.json";
+        a.click();
+      });
+
+      // Importar entradas desde archivo JSON
+      importButton.addEventListener("click", () => {
+        const confirmImport = confirm(
+          "Se sobrescribirán todas las entradas actuales. ¿Deseas continuar?"
+        );
+        if (!confirmImport) return;
+
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "application/json";
+        input.addEventListener("change", (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const importedEntries = JSON.parse(e.target.result);
+              if (Array.isArray(importedEntries)) {
+                localStorage.setItem("entries", JSON.stringify(importedEntries));
+                loadEntries();
+                alert("Entradas importadas con éxito.");
+              } else {
+                alert("El archivo no tiene un formato válido.");
+              }
+            } catch (error) {
+              alert("Error al leer el archivo.");
+            }
+          };
+          reader.readAsText(file);
+        });
+        input.click();
+      });
+
+      // Inicializar
+      loadEntries();
+      entryForm.classList.remove("hidden");
+    });
+  </script>
+
+</body>
+</html>
